@@ -171,7 +171,7 @@ export default function App() {
       { label: 'Create Leads via UI', Trial: true, Starter: true, Standard: true, Premier: true },
       { label: 'Mobile App Access', Trial: false, Starter: false, Standard: true, Premier: true },
       { label: 'Vendor Admin Role', Trial: true, Starter: true, Standard: true, Premier: true },
-      { label: 'Custom Branding', Trial: false, Starter: false, Standard: true, Premier: true },
+      { label: 'Custom Branding', Trial: false, Starter: false, Standard: false, Premier: true },
       { label: 'Reporting & Analytics', Trial: 'Basic', Starter: 'Basic', Standard: 'Enhanced', Premier: 'Custom + API' },
       { label: 'Support SLAs', Trial: 'Community', Starter: 'Community', Standard: 'Email + Chat', Premier: 'Dedicated Manager' },
       { label: 'Lead & Project Conversion Stats', Trial: 'Basic', Starter: 'Basic', Standard: 'Enhanced', Premier: 'Custom + API' },
