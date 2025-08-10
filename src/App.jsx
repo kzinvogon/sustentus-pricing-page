@@ -3,6 +3,7 @@ import React, { Fragment, useMemo, useRef, useState, useEffect } from 'react'
 export default function App() {
   const [selectedPlan, setSelectedPlan] = useState('Standard'); // default focus
   const [showSelectedOnly, setShowSelectedOnly] = useState(false);
+  const [showDifferences, setShowDifferences] = useState(false);
   const [showFeatureModal, setShowFeatureModal] = useState(false);
   const [selectedFeature, setSelectedFeature] = useState(null);
   const featuresRef = useRef(null);
@@ -11,7 +12,7 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     const plan = params.get('plan');
     const solo = params.get('solo');
-    if (plan && ['Starter','Standard','Premier'].includes(plan)) setSelectedPlan(plan);
+    if (plan && ['Trial','Starter','Standard','Premier'].includes(plan)) setSelectedPlan(plan);
     if (solo === '1') setShowSelectedOnly(true);
   }, []);
 
@@ -24,7 +25,8 @@ export default function App() {
   }, [selectedPlan, showSelectedOnly]);
 
   const plans = useMemo(() => ({
-    Starter: { price: 150, cta: 'Start Starter', blurb: 'Kick off with core lead intake and dashboards.' },
+    Trial: { price: 0, cta: 'Start Trial', blurb: 'Free trial to get started.' },
+    Starter: { price: 150, cta: 'Choose Starter', blurb: 'Kick off with core lead intake and dashboards.' },
     Standard: { price: 750, cta: 'Choose Standard', blurb: 'Scale with CRM sync, AI helpers, and flexible timers.' },
     Premier: { price: 'POA', cta: 'Talk to Sales', blurb: 'Unlock managed service, custom integrations, and SLAs.' },
   }), []);
@@ -60,47 +62,143 @@ export default function App() {
         'Lead validation and quality checks',
         'Custom field configuration'
       ]
+    },
+    'Human CSM Support': {
+      title: 'Human CSM Support',
+      description: 'Working alongside our agentile CSM, Sustentus FTE Resources provide escalatory interface to Customers and Point of Contact for Vendors.',
+      details: [
+        'Direct access to human Customer Success Managers',
+        'Escalation support for complex customer issues',
+        'Dedicated point of contact for vendor relationships',
+        'Personalized account management and support',
+        'Strategic guidance for business growth and optimization'
+      ]
+    },
+    'Operated by Sustentus': {
+      title: 'Operated by Sustentus',
+      description: 'Sustentus provides a Managed Business Service. Our staff will perform all activities including Customer Success Management, Service Delivery Management, Expert Market Place motivation and management, targeted upsell to Customers of Vendor products/services, Overall Business Administration.',
+      details: [
+        'Full Customer Success Management by Sustentus staff',
+        'Comprehensive Service Delivery Management',
+        'Expert Marketplace motivation and management',
+        'Targeted upsell campaigns for vendor products/services',
+        'Complete Business Administration and operations',
+        'Managed service approach for hands-off business operation'
+      ]
+    },
+    'Dedicated Instance': {
+      title: 'Dedicated Instance',
+      description: 'Customized solution based on Service Design with seamless integration to Vendor Domain, White Label capabilities, and Enterprise-grade integration.',
+      details: [
+        'Customization based on Service Design requirements',
+        'Deep integration with Vendor Domain systems',
+        'White Label solution for brand consistency',
+        'Enterprise seamless integration capabilities',
+        'Dedicated infrastructure and resources',
+        'Custom API endpoints and data flows'
+      ]
+    },
+    'Team Member Login': {
+      title: 'Team Member Login',
+      description: 'Add your team members and tag by sales region, territory, product, record conversions of leads to project at team member level.',
+      details: [
+        'Add and manage team members within the platform',
+        'Tag team members by sales region and territory',
+        'Product-specific team member assignments',
+        'Track lead-to-project conversions at individual level',
+        'Performance analytics per team member',
+        'Territory and region-based reporting'
+      ]
+    },
+    'Sales Regions': {
+      title: 'Sales Regions',
+      description: 'Configure and manage sales regions for territory-based operations and reporting.',
+      details: [
+        'Define and configure sales regions',
+        'Territory-based lead distribution and management',
+        'Regional performance analytics and reporting',
+        'Region-specific business rules and workflows',
+        'Multi-region expansion capabilities',
+        'Geographic sales territory optimization'
+      ]
+    },
+    'Lead & Project Conversion Stats': {
+      title: 'Lead & Project Conversion Stats',
+      description: 'Comprehensive tracking and analytics for lead-to-project conversion rates and performance metrics.',
+      details: [
+        'Real-time conversion rate tracking and analytics',
+        'Lead-to-project pipeline performance metrics',
+        'Conversion funnel analysis and optimization insights',
+        'Historical conversion data and trend analysis',
+        'Custom conversion metric definitions and tracking',
+        'Performance benchmarking and goal setting capabilities'
+      ]
+    },
+    'Service Timers': {
+      title: 'Service Timers',
+      description: 'Comprehensive timer management system for service delivery optimization including qualification, bid pool management, and customer engagement timers.',
+      details: [
+        'Configurable time limits for lead qualification processes',
+        'Flexible bid pool placement and duration timers',
+        'Bid activity alerts and response time management',
+        'Expert non-response timer tracking and escalation',
+        'Multi-stage customer wake-up timer system for engagement',
+        'Real-time timer tracking and workflow automation',
+        'Integration with customer success and expert management workflows'
+      ]
+    },
+    'License/Subscription Upsell tracking': {
+      title: 'License/Subscription Upsell tracking',
+      description: 'Track evolution of licenses / Subscriptions referred or sold in the Project Delivery.',
+      details: [
+        'Monitor license and subscription sales evolution',
+        'Track referrals and conversions in project delivery',
+        'Upsell opportunity identification and management',
+        'Revenue tracking from license/subscription sales',
+        'Performance analytics for upsell campaigns',
+        'Integration with project delivery workflows'
+      ]
     }
   }), []);
 
   const rows = [
     { group: 'Vendor', items: [
-      { label: 'Vendor Dashboard Access', Starter: true, Standard: true, Premier: true },
-      { label: 'Dynamic Graphical Dashboard', Starter: '1 Graph (4 datasets)', Standard: '2 Graphs (8 datasets)', Premier: 'Up to 4 Graphs (Unlimited datasets)' },
-      { label: 'Create Leads via UI', Starter: true, Standard: true, Premier: true },
-      { label: 'Mobile App Access', Starter: false, Standard: true, Premier: true },
-      { label: 'Vendor Admin Role', Starter: true, Standard: true, Premier: true },
-      { label: 'Custom Branding', Starter: false, Standard: true, Premier: true },
-      { label: 'Reporting & Analytics', Starter: 'Basic', Standard: 'Enhanced', Premier: 'Custom + API' },
-      { label: 'Support SLAs', Starter: 'Community', Standard: 'Email + Chat', Premier: 'Dedicated Manager' },
+      { label: 'Vendor Dashboard Access', Trial: true, Starter: true, Standard: true, Premier: true },
+      { label: 'Team Member Login', Trial: false, Starter: false, Standard: true, Premier: true },
+      { label: 'Sales Regions', Trial: '1 region', Starter: '1 region', Standard: '2 regions', Premier: 'Unlimited' },
+      { label: 'License/Subscription Upsell tracking', Trial: false, Starter: false, Standard: true, Premier: true },
+      { label: 'Dynamic Graphical Dashboard', Trial: '1 Graph (4 datasets)', Starter: '1 Graph (4 datasets)', Standard: '2 Graphs (8 datasets)', Premier: 'Up to 4 Graphs (Unlimited datasets)' },
+      { label: 'Create Leads via UI', Trial: true, Starter: true, Standard: true, Premier: true },
+      { label: 'Mobile App Access', Trial: false, Starter: false, Standard: true, Premier: true },
+      { label: 'Vendor Admin Role', Trial: true, Starter: true, Standard: true, Premier: true },
+      { label: 'Custom Branding', Trial: false, Starter: false, Standard: true, Premier: true },
+      { label: 'Reporting & Analytics', Trial: 'Basic', Starter: 'Basic', Standard: 'Enhanced', Premier: 'Custom + API' },
+      { label: 'Support SLAs', Trial: 'Community', Starter: 'Community', Standard: 'Email + Chat', Premier: 'Dedicated Manager' },
+      { label: 'Lead & Project Conversion Stats', Trial: 'Basic', Starter: 'Basic', Standard: 'Enhanced', Premier: 'Custom + API' },
     ]},
     { group: 'Lead Management & CRM', items: [
-      { label: 'Import Leads via CSV', Starter: '5/day', Standard: true, Premier: true },
-      { label: 'Sync Leads from CRM', Starter: false, Standard: 'HubSpot (1)', Premier: 'Multiple/Custom' },
-      { label: 'Open Table-to-Table Sync', Starter: false, Standard: true, Premier: true },
-      { label: 'CRM Integrations', Starter: false, Standard: 'HubSpot', Premier: 'HS, SF, Dyn, Custom' },
-      { label: 'Lead Volume / mo', Starter: '100', Standard: '1,000', Premier: 'Unlimited' },
-      { label: 'Max Customers', Starter: '10', Standard: '500', Premier: 'Unlimited' },
-      { label: 'Max Experts', Starter: '1', Standard: '10', Premier: 'Unlimited' },
+      { label: 'Import Leads via CSV', Trial: '50', Starter: '100/mo', Standard: '1000/mo', Premier: true },
+      { label: 'Sync Leads from CRM', Trial: false, Starter: false, Standard: 'HubSpot (1)', Premier: 'Multiple/Custom' },
+      { label: 'Open Table-to-Table Sync', Trial: false, Starter: false, Standard: true, Premier: true },
+      { label: 'CRM Integrations', Trial: false, Starter: false, Standard: 'HubSpot', Premier: 'HS, SF, Dyn, Custom' },
+      { label: 'Lead Volume / mo', Trial: '50', Starter: '100', Standard: '1,000', Premier: 'Unlimited' },
+      { label: 'Max Customers', Trial: '10', Starter: '500', Standard: '5000', Premier: 'Unlimited' },
+      { label: 'Max Experts', Trial: '10', Starter: '1000', Standard: '25000', Premier: 'Unlimited' },
     ]},
     { group: 'AI & Automation', items: [
-      { label: 'AI ChatBots', Starter: 'Basic', Standard: 'Advanced', Premier: 'Custom / Multiple' },
-      { label: 'AI Agents (CSM, Expert)', Starter: false, Standard: true, Premier: true },
-      { label: 'Expert Onboarding Tools', Starter: 'Manual', Standard: 'Guided + AI', Premier: 'Fully Managed' },
-      { label: 'Bid Manager Agent', Starter: false, Standard: true, Premier: true },
-      { label: 'Human CSM Support', Starter: false, Standard: false, Premier: true },
-      { label: 'Operated by Sustentus', Starter: false, Standard: false, Premier: true },
+      { label: 'AI ChatBots', Trial: 'Basic', Starter: 'Basic', Standard: 'Advanced', Premier: 'Custom / Multiple' },
+      { label: 'AI Agents (CSM, Expert)', Trial: false, Starter: false, Standard: true, Premier: true },
+      { label: 'Expert Onboarding Tools', Trial: 'Manual', Starter: 'Manual', Standard: 'Guided + AI', Premier: 'Fully Managed' },
+      { label: 'Bid Manager Agent', Trial: false, Starter: false, Standard: true, Premier: true },
+      { label: 'Human CSM Support', Trial: false, Starter: false, Standard: false, Premier: true },
+      { label: 'Operated by Sustentus', Trial: false, Starter: false, Standard: false, Premier: true },
+      { label: 'Dedicated Instance', Trial: false, Starter: false, Standard: false, Premier: true },
     ]},
     { group: 'Service Timers & Notifications', items: [
-      { label: 'Time to Qualify', Starter: 'Fixed', Standard: 'Editable', Premier: 'Editable' },
-      { label: 'Time to Place in Bid Pool', Starter: 'Fixed', Standard: 'Editable', Premier: 'Editable' },
-      { label: 'Time in Bid Pool', Starter: 'Fixed', Standard: 'Editable', Premier: 'Editable' },
-      { label: 'Bid Activity Alert', Starter: 'Fixed', Standard: 'Editable', Premier: 'Editable' },
-      { label: 'Expert Non-Response Timer', Starter: 'Fixed', Standard: 'Editable', Premier: 'Editable' },
-      { label: 'Customer Wake-Up Timer', Starter: 'Basic', Standard: 'Multi-stage', Premier: 'Multi-stage' },
-      { label: 'Timer Customization', Starter: false, Standard: true, Premier: true },
-      { label: 'Notification Type', Starter: 'Basic', Standard: 'Short/Long + URL', Premier: 'Long + URL + Action' },
-      { label: 'Custom Notification Rules', Starter: false, Standard: false, Premier: true },
+      { label: 'Service Timers', Trial: 'Basic', Starter: 'Basic', Standard: 'Enhanced', Premier: 'Custom + Advanced' },
+      { label: 'Timer Customization', Trial: false, Starter: false, Standard: true, Premier: true },
+      { label: 'Notification Type', Trial: 'Basic', Starter: 'Basic', Standard: 'Short/Long + URL', Premier: 'Long + URL + Action' },
+      { label: 'Custom Notification Rules', Trial: false, Starter: false, Standard: false, Premier: true },
     ]},
   ];
 
@@ -131,6 +229,7 @@ export default function App() {
         featuresRef={featuresRef}
         showSelectedOnly={showSelectedOnly}
         setShowSelectedOnly={setShowSelectedOnly}
+        showDifferences={showDifferences}
         onFeatureClick={handleFeatureClick}
       />
       <FeatureModal
@@ -172,18 +271,21 @@ function Hero() {
 }
 
 function Pricing({ plans, onChoose, selectedPlan }) {
-  const order = ['Starter','Standard','Premier'];
+  const order = ['Trial','Starter','Standard','Premier'];
   return (
     <section id="pricing" className="mx-auto max-w-7xl px-6 pb-6">
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {order.map((name) => {
           const p = plans[name];
           const highlight = name === 'Standard';
+          const isStarter = name === 'Starter';
           return (
             <button
               key={name}
               onClick={() => onChoose(name)}
-              className={`relative rounded-2xl border p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 ${highlight ? 'border-indigo-600' : 'border-slate-200'}`}
+              className={`relative rounded-2xl border p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 ${
+                highlight ? 'border-indigo-600' : 'border-slate-200'
+              } ${isStarter ? 'opacity-90' : ''}`}
             >
               {highlight && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full border border-indigo-600 bg-white px-3 py-1 text-xs font-semibold text-indigo-700 shadow-sm">
@@ -202,12 +304,17 @@ function Pricing({ plans, onChoose, selectedPlan }) {
                   <span className="text-3xl font-extrabold tracking-tight">{p.price}</span>
                 )}
               </div>
-              <div className={`mt-4 inline-flex items-center rounded-lg px-3 py-2 text-sm font-semibold ${highlight ? 'bg-indigo-600 text-white' : 'border border-slate-300'} ${selectedPlan === name ? 'ring-2 ring-indigo-600' : ''}`}>
+              <div className={`mt-4 inline-flex items-center rounded-lg px-3 py-2 text-sm font-semibold ${
+                highlight ? 'bg-indigo-600 text-white' : 'border border-slate-300'
+              } ${selectedPlan === name ? 'ring-2 ring-indigo-600' : ''} ${
+                isStarter ? 'bg-slate-600 text-white' : ''
+              }`}>
                 {p.cta ?? 'See features'}
                 <svg className="ml-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M5 12h14M13 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
+              <div className="mt-2 text-xs text-slate-500">No setup fees. Cancel anytime.</div>
             </button>
           );
         })}
@@ -217,9 +324,9 @@ function Pricing({ plans, onChoose, selectedPlan }) {
 }
 
 function FeatureMatrix({
-  rows, plans, selectedPlan, onChoose, featuresRef, showSelectedOnly, setShowSelectedOnly, onFeatureClick,
+  rows, plans, selectedPlan, onChoose, featuresRef, showSelectedOnly, setShowSelectedOnly, showDifferences, onFeatureClick,
 }) {
-  const allOrder = ['Starter','Standard','Premier'];
+  const allOrder = ['Trial','Starter','Standard','Premier'];
   const order = showSelectedOnly ? [selectedPlan] : allOrder;
 
   const [stickyReady, setStickyReady] = useState(false);
@@ -229,21 +336,50 @@ function FeatureMatrix({
     <section id="features" ref={featuresRef} className="mx-auto max-w-7xl px-6 py-10">
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-4xl font-extrabold text-slate-900">Compare features by plan</h2>
-        <label className="flex select-none items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            className="h-4 w-4 accent-indigo-600"
-            checked={showSelectedOnly}
-            onChange={(e) => setShowSelectedOnly(e.target.checked)}
-          />
-          <span>Show selected only</span>
-        </label>
+        <div className="flex items-center gap-4">
+          <label className="flex select-none items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-indigo-600"
+              checked={showSelectedOnly}
+              onChange={(e) => setShowSelectedOnly(e.target.checked)}
+            />
+            <span>Show selected only</span>
+          </label>
+          <label className="flex select-none items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-indigo-600"
+              checked={showDifferences}
+              onChange={(e) => setShowDifferences(e.target.checked)}
+            />
+            <span>Highlight differences</span>
+          </label>
+        </div>
+      </div>
+      
+      {/* Duplicate CTAs above table */}
+      <div className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+        {order.map((name) => (
+          <button
+            key={name}
+            onClick={() => onChoose(name)}
+            className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+              selectedPlan === name 
+                ? 'bg-indigo-600 text-white ring-2 ring-indigo-600' 
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            {plans[name].cta}
+          </button>
+        ))}
       </div>
 
-      <div className="mt-2 overflow-hidden rounded-2xl border-2 border-slate-200 shadow-xl">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-gradient-to-r from-slate-50 to-slate-100">
-                          <tr>
+      <div className="mt-2 rounded-2xl border-2 border-slate-200 shadow-xl">
+        <div className="overflow-x-auto max-h-[70vh] overflow-y-auto">
+          <table className="w-full min-w-[800px] text-left text-sm">
+            <thead className="sticky top-0 z-20 bg-gradient-to-r from-slate-50 to-slate-100 shadow-sm">
+              <tr>
                 <th className={`${order.length === 1 ? 'w-3/4' : 'w-1/2'} p-4 font-bold text-slate-700 text-lg`}>Feature</th>
                 {order.map((name) => (
                   <th key={name} className={`p-4 text-center font-bold text-lg ${selectedPlan === name ? 'text-indigo-700' : 'text-slate-700'}`}>
@@ -251,7 +387,7 @@ function FeatureMatrix({
                   </th>
                 ))}
               </tr>
-          </thead>
+            </thead>
           <tbody>
             {rows.map((group, gi) => (
               <Fragment key={group.group}>
@@ -261,8 +397,8 @@ function FeatureMatrix({
                   </td>
                 </tr>
 
-                {group.items.map((r) => (
-                  <tr key={r.label} className="border-t">
+                {group.items.map((r, index) => (
+                  <tr key={r.label} className={`border-t ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-indigo-50 transition-colors`}>
                     <td className="p-4">
                       <button
                         onClick={() => onFeatureClick(r.label)}
@@ -270,19 +406,28 @@ function FeatureMatrix({
                         title="Click for more details"
                       >
                         {r.label}
-                        <svg className="inline ml-1 h-4 w-4 text-slate-400 hover:text-indigo-600 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <svg className="inline ml-2 h-5 w-5 text-slate-400 hover:text-indigo-600 transition-colors cursor-pointer" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       </button>
                     </td>
-                    {order.map((name) => (
-                      <td
-                        key={name}
-                        className={`p-4 text-center align-top ${selectedPlan === name ? 'bg-indigo-50' : ''}`}
-                      >
-                        <PlanCell value={r[name]} />
-                      </td>
-                    ))}
+                    {order.map((name) => {
+                      const isDifferent = showDifferences && order.some(otherName => 
+                        otherName !== name && r[otherName] !== r[name]
+                      );
+                      return (
+                        <td
+                          key={name}
+                          className={`p-4 text-center align-top ${
+                            selectedPlan === name ? 'bg-indigo-50' : ''
+                          } ${
+                            isDifferent ? 'ring-2 ring-amber-300 bg-amber-50' : ''
+                          }`}
+                        >
+                          <PlanCell value={r[name]} />
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))}
 
@@ -330,6 +475,7 @@ function FeatureMatrix({
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Plan selector buttons remain visible even in filtered mode */}

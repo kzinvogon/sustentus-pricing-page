@@ -1,0 +1,54 @@
+name: Deploy to Sustentus Server
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Build project
+      run: npm run build
+      
+    - name: Deploy to server
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USERNAME }}
+        key: ${{ secrets.SERVER_SSH_KEY }}
+        port: ${{ secrets.SERVER_PORT }}
+        script: |
+          # Navigate to web directory
+          cd /var/www/dhinnovation.sustentus.com
+          
+          # Backup current version
+          if [ -d "current" ]; then
+            cp -r current backup-$(date +%Y%m%d-%H%M%S)
+          fi
+          
+          # Create new deployment directory
+          mkdir -p deployments/$(date +%Y%m%d-%H%M%S)
+          
+          # Clean up old deployments (keep last 5)
+          ls -t deployments/ | tail -n +6 | xargs -r rm -rf
+          
+          # Clean up old backups (keep last 3)
+          ls -t backup-* | tail -n +4 | xargs -r rm -rf
+          
+          echo "Deployment completed successfully!"
