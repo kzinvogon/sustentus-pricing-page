@@ -327,6 +327,8 @@ export default function App() {
         onSendMagicLink={handleSendMagicLink}
         onPaymentSubmit={handlePaymentSubmit}
         onResendMagicLink={handleResendMagicLink}
+        setIsAuthenticated={setIsAuthenticated}
+        setAuthStep={setAuthStep}
       />
       <Footer />
     </div>
@@ -704,7 +706,9 @@ function PaymentFlow({
   paymentStatus, 
   onSendMagicLink, 
   onPaymentSubmit, 
-  onResendMagicLink 
+  onResendMagicLink,
+  setIsAuthenticated,
+  setAuthStep
 }) {
   if (!isOpen) return null;
 
