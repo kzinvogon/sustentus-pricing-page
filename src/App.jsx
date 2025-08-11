@@ -6,6 +6,12 @@ export default function App() {
   const [showDifferences, setShowDifferences] = useState(false);
   const [showFeatureModal, setShowFeatureModal] = useState(false);
   const [selectedFeature, setSelectedFeature] = useState(null);
+  const [showPaymentFlow, setShowPaymentFlow] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [authStep, setAuthStep] = useState('email'); // 'email', 'check-email', 'payment'
+  const [paymentStatus, setPaymentStatus] = useState('pending'); // 'pending', 'processing', 'success', 'failed'
   const featuresRef = useRef(null);
 
   useEffect(() => {
@@ -23,6 +29,25 @@ export default function App() {
     const newUrl = window.location.pathname + '?' + params.toString() + (window.location.hash || '');
     window.history.replaceState({}, '', newUrl);
   }, [selectedPlan, showSelectedOnly]);
+
+  // Check for magic link token in URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    if (token) {
+      // Simulate token validation
+      setIsLoading(true);
+      setTimeout(() => {
+        setIsAuthenticated(true);
+        setAuthStep('payment');
+        setShowPaymentFlow(true);
+        setIsLoading(false);
+        // Clean up URL
+        const newUrl = window.location.pathname + '?' + params.toString().replace(/&?token=[^&]*/, '');
+        window.history.replaceState({}, '', newUrl);
+      }, 1500);
+    }
+  }, []);
 
   const plans = useMemo(() => ({
     Trial: { price: 0, cta: 'Start Trial', blurb: 'Free trial to get started.' },
@@ -216,11 +241,62 @@ export default function App() {
     }
   }
 
+  function handleStartPayment(plan) {
+    setSelectedPlan(plan);
+    setShowPaymentFlow(true);
+    setAuthStep('email');
+    setIsAuthenticated(false);
+    setUserEmail('');
+  }
+
+  function handleSendMagicLink(email) {
+    if (!email || !email.includes('@')) return;
+    
+    setIsLoading(true);
+    setUserEmail(email);
+    
+    // Simulate sending magic link
+    setTimeout(() => {
+      setIsLoading(false);
+      setAuthStep('check-email');
+    }, 2000);
+  }
+
+  function handlePaymentSubmit() {
+    setPaymentStatus('processing');
+    
+    // Simulate payment processing
+    setTimeout(() => {
+      setPaymentStatus('success');
+      
+      // Auto-close after success
+      setTimeout(() => {
+        setShowPaymentFlow(false);
+        setPaymentStatus('pending');
+        setAuthStep('email');
+        setIsAuthenticated(false);
+      }, 3000);
+    }, 3000);
+  }
+
+  function handleResendMagicLink() {
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+      // Show success message
+    }, 1000);
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white text-slate-900">
       <Header />
       <Hero />
-      <Pricing plans={plans} onChoose={handleChoose} selectedPlan={selectedPlan} />
+      <Pricing 
+        plans={plans} 
+        onChoose={handleChoose} 
+        selectedPlan={selectedPlan}
+        onStartPayment={handleStartPayment}
+      />
       <FeatureMatrix
         rows={rows}
         plans={plans}
@@ -236,6 +312,21 @@ export default function App() {
         isOpen={showFeatureModal}
         onClose={() => setShowFeatureModal(false)}
         feature={selectedFeature}
+      />
+      <PaymentFlow
+        isOpen={showPaymentFlow}
+        onClose={() => setShowPaymentFlow(false)}
+        selectedPlan={selectedPlan}
+        plans={plans}
+        userEmail={userEmail}
+        setUserEmail={setUserEmail}
+        isAuthenticated={isAuthenticated}
+        isLoading={isLoading}
+        authStep={authStep}
+        paymentStatus={paymentStatus}
+        onSendMagicLink={handleSendMagicLink}
+        onPaymentSubmit={handlePaymentSubmit}
+        onResendMagicLink={handleResendMagicLink}
       />
       <Footer />
     </div>
@@ -270,7 +361,7 @@ function Hero() {
   );
 }
 
-function Pricing({ plans, onChoose, selectedPlan }) {
+function Pricing({ plans, onChoose, selectedPlan, onStartPayment }) {
   const order = ['Trial','Starter','Standard','Premier'];
   return (
     <section id="pricing" className="mx-auto max-w-7xl px-6 pb-6">
@@ -282,7 +373,7 @@ function Pricing({ plans, onChoose, selectedPlan }) {
           return (
             <button
               key={name}
-              onClick={() => onChoose(name)}
+              onClick={() => onStartPayment(name)}
               className={`relative rounded-2xl border p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 ${
                 highlight ? 'border-indigo-600' : 'border-slate-200'
               } ${isStarter ? 'opacity-90' : ''}`}
@@ -309,10 +400,19 @@ function Pricing({ plans, onChoose, selectedPlan }) {
               } ${selectedPlan === name ? 'ring-2 ring-indigo-600' : ''} ${
                 isStarter ? 'bg-slate-600 text-white' : ''
               }`}>
-                {p.cta ?? 'See features'}
-                <svg className="ml-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M5 12h14M13 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onStartPayment(name);
+                  }}
+                  className="w-full text-left"
+                >
+                  {p.cta ?? 'See features'}
+                  <svg className="ml-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M5 12h14M13 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
               </div>
               <div className="mt-2 text-xs text-slate-500">No setup fees. Cancel anytime.</div>
             </button>
@@ -586,6 +686,283 @@ function FeatureModal({ isOpen, onClose, feature }) {
             Close
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function PaymentFlow({ 
+  isOpen, 
+  onClose, 
+  selectedPlan, 
+  plans, 
+  userEmail, 
+  setUserEmail, 
+  isAuthenticated, 
+  isLoading, 
+  authStep, 
+  paymentStatus, 
+  onSendMagicLink, 
+  onPaymentSubmit, 
+  onResendMagicLink 
+}) {
+  if (!isOpen) return null;
+
+  const plan = plans[selectedPlan];
+  const isFree = selectedPlan === 'Trial' || plan.price === 0;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+        {/* Header */}
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h3 className="text-xl font-bold text-slate-900">Complete Your {selectedPlan} Plan</h3>
+            <p className="text-sm text-slate-600">You're just a few steps away from getting started</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          >
+            <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Plan Summary */}
+        <div className="mb-6 rounded-xl bg-slate-50 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="font-semibold text-slate-900">{selectedPlan} Plan</h4>
+              <p className="text-sm text-slate-600">{plan.blurb}</p>
+            </div>
+            <div className="text-right">
+              {typeof plan.price === 'number' ? (
+                <div className="text-2xl font-bold text-slate-900">€{plan.price}</div>
+              ) : (
+                <div className="text-xl font-bold text-slate-900">{plan.price}</div>
+              )}
+              <div className="text-xs text-slate-500">per user/month</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Authentication Flow */}
+        {authStep === 'email' && !isAuthenticated && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Email Address
+              </label>
+              <input
+                type="email"
+                value={userEmail}
+                onChange={(e) => setUserEmail(e.target.value)}
+                placeholder="Enter your email address"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                disabled={isLoading}
+              />
+            </div>
+            <button
+              onClick={() => onSendMagicLink(userEmail)}
+              disabled={!userEmail || isLoading}
+              className="w-full rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? (
+                <div className="flex items-center justify-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Sending...
+                </div>
+              ) : (
+                'Send Magic Link'
+              )}
+            </button>
+            
+            {/* Demo: Skip to payment for testing */}
+            <div className="pt-4 border-t border-slate-200">
+              <p className="text-xs text-slate-500 mb-2">Demo: Skip to payment</p>
+              <button
+                onClick={() => {
+                  setIsAuthenticated(true);
+                  setAuthStep('payment');
+                }}
+                className="w-full text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg transition-colors"
+              >
+                🚀 Skip to Payment Form
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Check Email Step */}
+        {authStep === 'check-email' && (
+          <div className="space-y-4 text-center">
+            <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div>
+              <h4 className="text-lg font-semibold text-slate-900">Check Your Email</h4>
+              <p className="text-sm text-slate-600">
+                We've sent a magic link to <span className="font-medium">{userEmail}</span>
+              </p>
+            </div>
+            <div className="text-xs text-slate-500">
+              Click the link in your email to continue to payment
+            </div>
+            <button
+              onClick={onResendMagicLink}
+              disabled={isLoading}
+              className="text-sm text-indigo-600 hover:text-indigo-700 disabled:opacity-50"
+            >
+              {isLoading ? 'Sending...' : 'Resend magic link'}
+            </button>
+            
+            {/* Demo: Simulate magic link click for testing */}
+            <div className="pt-4 border-t border-slate-200">
+              <p className="text-xs text-slate-500 mb-2">Demo: Click to simulate magic link</p>
+              <button
+                onClick={() => {
+                  setIsAuthenticated(true);
+                  setAuthStep('payment');
+                }}
+                className="w-full text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg transition-colors"
+              >
+                🧪 Simulate Magic Link Click
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Payment Step */}
+        {authStep === 'payment' && isAuthenticated && (
+          <div className="space-y-4">
+            {isFree ? (
+              <div className="text-center space-y-4">
+                <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                  <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 className="text-lg font-semibold text-slate-900">Start Your Free Trial</h4>
+                  <p className="text-sm text-slate-600">No payment required to get started</p>
+                </div>
+                <button
+                  onClick={onPaymentSubmit}
+                  className="w-full rounded-lg bg-green-600 px-4 py-2 font-semibold text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                >
+                  Activate Trial
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <h4 className="font-semibold text-slate-900 mb-3">Payment Information</h4>
+                  
+                  {/* Mock Payment Form */}
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">
+                        Card Number
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="1234 5678 9012 3456"
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        disabled={paymentStatus === 'processing'}
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                          Expiry Date
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="MM/YY"
+                          className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          disabled={paymentStatus === 'processing'}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                          CVC
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="123"
+                          className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          disabled={paymentStatus === 'processing'}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">
+                        Name on Card
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="John Doe"
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        disabled={paymentStatus === 'processing'}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment Button */}
+                <button
+                  onClick={onPaymentSubmit}
+                  disabled={paymentStatus === 'processing'}
+                  className="w-full rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {paymentStatus === 'processing' ? (
+                    <div className="flex items-center justify-center">
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Processing...
+                    </div>
+                  ) : (
+                    `Pay €${plan.price}/month`
+                  )}
+                </button>
+
+                {/* Security Notice */}
+                <div className="text-xs text-slate-500 text-center">
+                  🔒 Your payment information is secure and encrypted
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Success State */}
+        {paymentStatus === 'success' && (
+          <div className="text-center space-y-4">
+            <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div>
+              <h4 className="text-lg font-semibold text-slate-900">Payment Successful!</h4>
+              <p className="text-sm text-slate-600">Your {selectedPlan} plan is now active</p>
+            </div>
+            <div className="text-xs text-slate-500">
+              You'll receive a confirmation email shortly
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
