@@ -1,7 +1,6 @@
 import React, { Fragment, useMemo, useRef, useState, useEffect } from 'react'
-import { sendMagicLink, sendWelcomeEmail, sendPaymentConfirmation } from './services/nodemailer.js'
 
-export default function App() {
+export default function App({ onNavigateToLogin }) {
   const [selectedPlan, setSelectedPlan] = useState('Standard'); // default focus
   const [showSelectedOnly, setShowSelectedOnly] = useState(false);
   const [showDifferences, setShowDifferences] = useState(false);
@@ -13,6 +12,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [authStep, setAuthStep] = useState('registration'); // 'registration', 'check-email', 'payment'
   const [paymentStatus, setPaymentStatus] = useState('pending'); // 'pending', 'processing', 'success', 'failed'
+  const [encryptedVendorId, setEncryptedVendorId] = useState('');
   const [registrationData, setRegistrationData] = useState({
     companyName: '',
     contactName: '',
@@ -47,10 +47,44 @@ export default function App() {
       // Simulate token validation
       setIsLoading(true);
       setTimeout(() => {
+        // Get stored registration data from localStorage
+        const storedData = localStorage.getItem('sustentus_registration');
+        const storedEncryptedVendorId = localStorage.getItem('sustentus_encrypted_vendor_id');
+        
+        if (storedData) {
+          try {
+            const parsedData = JSON.parse(storedData);
+            setRegistrationData(parsedData);
+            setUserEmail(parsedData.email);
+            
+            // Get plan from stored data or URL
+            const planFromUrl = params.get('plan');
+            if (planFromUrl && ['Trial','Starter','Standard','Premier'].includes(planFromUrl)) {
+              setSelectedPlan(planFromUrl);
+            } else if (parsedData.plan) {
+              // Fallback to stored plan if not in URL
+              setSelectedPlan(parsedData.plan);
+            }
+            
+            // Set encrypted vendor ID if available
+            if (storedEncryptedVendorId) {
+              setEncryptedVendorId(storedEncryptedVendorId);
+            }
+            
+            console.log('🔗 Magic link processed successfully:');
+            console.log('Email:', parsedData.email);
+            console.log('Plan:', planFromUrl || parsedData.plan);
+            console.log('Registration Data:', parsedData);
+          } catch (e) {
+            console.error('Error parsing stored registration data:', e);
+          }
+        }
+        
         setIsAuthenticated(true);
         setAuthStep('payment');
         setShowPaymentFlow(true);
         setIsLoading(false);
+        
         // Clean up URL
         const newUrl = window.location.pathname + '?' + params.toString().replace(/&?token=[^&]*/, '');
         window.history.replaceState({}, '', newUrl);
@@ -272,69 +306,157 @@ export default function App() {
     
     setIsLoading(true);
     setUserEmail(registrationData.email);
+    setRegistrationData(registrationData); // Save the registration data to state
+    
+    // Store registration data in localStorage for cross-tab access
+    const dataToStore = {
+      ...registrationData,
+      plan: selectedPlan // Include the plan in stored data
+    };
+    localStorage.setItem('sustentus_registration', JSON.stringify(dataToStore));
     
     try {
-      // Generate a simple token (in production, use proper JWT or crypto)
-      const token = btoa(`${registrationData.email}-${Date.now()}-${Math.random()}`);
-      
-      // Send magic link email via SendGrid
-      const result = await sendMagicLink(registrationData.email, selectedPlan, token);
+      // Send real magic link email via backend
+      const response = await fetch('http://localhost:3001/api/send-magic-link', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: registrationData.email,
+          plan: selectedPlan,
+          registrationData: registrationData
+        })
+      });
+
+      const result = await response.json();
       
       if (result.success) {
         console.log('Magic link sent successfully to:', registrationData.email);
+        console.log('Full response:', result);
+        console.log('Vendor ID:', result.vendorId);
+        console.log('Encrypted Vendor ID:', result.encryptedVendorId);
+        
+        // Store the encrypted vendor ID for future use
+        if (result.encryptedVendorId) {
+          setEncryptedVendorId(result.encryptedVendorId);
+          localStorage.setItem('sustentus_encrypted_vendor_id', result.encryptedVendorId);
+          console.log('✅ Encrypted Vendor ID stored:', result.encryptedVendorId);
+        } else {
+          console.error('❌ No encrypted Vendor ID in response');
+        }
+        
         setAuthStep('check-email');
       } else {
         console.error('Failed to send magic link:', result.error);
-        // Fallback to simulation for demo purposes
-        setTimeout(() => {
-          setIsLoading(false);
-          setAuthStep('check-email');
-        }, 2000);
+        alert('Failed to send magic link. Please try again.');
       }
     } catch (error) {
       console.error('Error sending magic link:', error);
-      // Fallback to simulation for demo purposes
-      setTimeout(() => {
-        setIsLoading(false);
-        setAuthStep('check-email');
-      }, 2000);
+      alert('Error sending magic link. Please try again.');
     } finally {
       setIsLoading(false);
     }
   }
 
   async function handlePaymentSubmit() {
+    console.log('🚀 handlePaymentSubmit function called!');
+    console.log('Current state:', { userEmail, selectedPlan, registrationData });
+    console.log('🔍 State details:');
+    console.log('- userEmail type:', typeof userEmail, 'value:', userEmail);
+    console.log('- selectedPlan type:', typeof selectedPlan, 'value:', selectedPlan);
+    console.log('- registrationData type:', typeof registrationData, 'keys:', registrationData ? Object.keys(registrationData) : 'undefined');
+    
     setPaymentStatus('processing');
     
     try {
+      console.log('⏳ Simulating payment processing...');
       // Simulate payment processing
       await new Promise(resolve => setTimeout(resolve, 3000));
+      console.log('✅ Payment processing simulation complete');
       
-      // Send confirmation emails
-      const welcomeResult = await sendWelcomeEmail(userEmail, selectedPlan, registrationData);
-      const paymentResult = await sendPaymentConfirmation(userEmail, selectedPlan, registrationData, {});
+      // Send real welcome and payment confirmation emails
+      console.log('=== EMAIL DEBUGGING START ===');
+      console.log('Email:', userEmail);
+      console.log('Plan:', selectedPlan);
+      console.log('Registration Data:', registrationData);
+      console.log('Registration Data Type:', typeof registrationData);
+      console.log('Registration Data Keys:', registrationData ? Object.keys(registrationData) : 'undefined');
+      console.log('=== EMAIL DEBUGGING END ===');
       
-      if (welcomeResult.success) {
-        console.log('Welcome email sent successfully');
-      } else {
-        console.error('Failed to send welcome email:', welcomeResult.error);
-      }
-      
-      if (paymentResult.success) {
-        console.log('Payment confirmation email sent successfully');
-      } else {
-        console.error('Failed to send payment confirmation:', paymentResult.error);
+      try {
+        // Validate required data before sending emails
+        if (!userEmail || !selectedPlan || !registrationData) {
+          console.error('❌ Missing required data for emails:');
+          console.error('userEmail:', userEmail);
+          console.error('selectedPlan:', selectedPlan);
+          console.error('registrationData:', registrationData);
+          throw new Error('Missing required data for emails');
+        }
+
+        if (!registrationData.companyName || !registrationData.contactName || !registrationData.billingAddress || !registrationData.phone) {
+          console.error('❌ Missing required registration fields:');
+          console.error('registrationData:', registrationData);
+          console.error('Missing fields check:');
+          console.error('companyName:', !!registrationData.companyName);
+          console.error('contactName:', !!registrationData.contactName);
+          console.error('billingAddress:', !!registrationData.billingAddress);
+          console.error('phone:', !!registrationData.phone);
+          throw new Error('Missing required registration fields');
+        }
+
+        console.log('✅ Data validation passed, sending welcome email...');
+        const welcomeResponse = await fetch('http://localhost:3001/api/send-welcome-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: userEmail,
+            plan: selectedPlan,
+            registrationData: registrationData
+          })
+        });
+
+        console.log('Welcome email response status:', welcomeResponse.status);
+        const welcomeResult = await welcomeResponse.json();
+        console.log('Welcome email result:', welcomeResult);
+
+        console.log('Sending payment confirmation email...');
+        const paymentResponse = await fetch('http://localhost:3001/api/send-payment-confirmation', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: userEmail,
+            plan: selectedPlan,
+            registrationData: registrationData,
+            paymentDetails: {}
+          })
+        });
+
+        console.log('Payment confirmation response status:', paymentResponse.status);
+        const paymentResult = await paymentResponse.json();
+        console.log('Payment confirmation result:', paymentResult);
+
+        if (welcomeResponse.ok && paymentResponse.ok) {
+          console.log('✅ Welcome and payment confirmation emails sent successfully');
+        } else {
+          console.error('❌ Failed to send some emails');
+        }
+      } catch (emailError) {
+        console.error('❌ Error sending emails:', emailError);
+        // Continue with success even if emails fail
       }
       
       setPaymentStatus('success');
       
-      // Auto-close after success
-      setTimeout(() => {
-        setShowPaymentFlow(false);
-        setPaymentStatus('pending');
-        setAuthStep('registration');
-        setIsAuthenticated(false);
-      }, 5000); // Give more time to read the success message
+      // Transition to dashboard state to show navigation buttons
+      setAuthStep('dashboard');
+      
+      // Success state will now be controlled by user clicking the button
+      // No auto-close timeout needed
     } catch (error) {
       console.error('Error processing payment:', error);
       setPaymentStatus('failed');
@@ -346,17 +468,41 @@ export default function App() {
     }
   }
 
-  function handleResendMagicLink() {
+  async function handleResendMagicLink() {
     setIsLoading(true);
-    setTimeout(() => {
+    
+    try {
+      const response = await fetch('http://localhost:3001/api/send-magic-link', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: userEmail,
+          plan: selectedPlan
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log('Magic link resent successfully to:', userEmail);
+        alert('Magic link resent! Please check your email.');
+      } else {
+        console.error('Failed to resend magic link:', result.error);
+        alert('Failed to resend magic link. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error resending magic link:', error);
+      alert('Error resending magic link. Please try again.');
+    } finally {
       setIsLoading(false);
-      // Show success message
-    }, 1000);
+    }
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white text-slate-900">
-      <Header />
+      <Header onNavigateToLogin={onNavigateToLogin} />
       <Hero />
       <Pricing 
         plans={plans} 
@@ -380,31 +526,34 @@ export default function App() {
         onClose={() => setShowFeatureModal(false)}
         feature={selectedFeature}
       />
-      <PaymentFlow
-        isOpen={showPaymentFlow}
-        onClose={() => setShowPaymentFlow(false)}
-        selectedPlan={selectedPlan}
-        plans={plans}
-        userEmail={userEmail}
-        setUserEmail={setUserEmail}
-        isAuthenticated={isAuthenticated}
-        isLoading={isLoading}
-        authStep={authStep}
-        paymentStatus={paymentStatus}
-        onSendMagicLink={handleSendMagicLink}
-        onPaymentSubmit={handlePaymentSubmit}
-        onResendMagicLink={handleResendMagicLink}
-        setIsAuthenticated={setIsAuthenticated}
-        setAuthStep={setAuthStep}
-        registrationData={registrationData}
-        setRegistrationData={setRegistrationData}
-      />
+              <PaymentFlow 
+          isOpen={showPaymentFlow}
+          onClose={() => setShowPaymentFlow(false)}
+          selectedPlan={selectedPlan}
+          setSelectedPlan={setSelectedPlan}
+          plans={plans}
+          userEmail={userEmail}
+          setUserEmail={setUserEmail}
+          isAuthenticated={isAuthenticated}
+          isLoading={isLoading}
+          authStep={authStep}
+          paymentStatus={paymentStatus}
+          onSendMagicLink={handleSendMagicLink}
+          onPaymentSubmit={handlePaymentSubmit}
+          onResendMagicLink={handleResendMagicLink}
+          setIsAuthenticated={setIsAuthenticated}
+          setAuthStep={setAuthStep}
+          registrationData={registrationData}
+          setRegistrationData={setRegistrationData}
+          encryptedVendorId={encryptedVendorId}
+          setEncryptedVendorId={setEncryptedVendorId}
+        />
       <Footer />
     </div>
   );
 }
 
-function Header() {
+function Header({ onNavigateToLogin }) {
   return (
     <header className="sticky top-0 z-50 border-b bg-white/80 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
@@ -415,6 +564,12 @@ function Header() {
         <nav className="hidden items-center gap-8 md:flex">
           <a href="#pricing" className="text-sm font-medium hover:text-indigo-600">Pricing</a>
           <a href="#features" className="text-sm font-medium hover:text-indigo-600">Features</a>
+          <button 
+            onClick={onNavigateToLogin}
+            className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+          >
+            Login
+          </button>
         </nav>
       </div>
     </header>
@@ -766,6 +921,7 @@ function PaymentFlow({
   isOpen, 
   onClose, 
   selectedPlan, 
+  setSelectedPlan,
   plans, 
   userEmail, 
   setUserEmail, 
@@ -779,7 +935,9 @@ function PaymentFlow({
   setIsAuthenticated,
   setAuthStep,
   registrationData,
-  setRegistrationData
+  setRegistrationData,
+  encryptedVendorId,
+  setEncryptedVendorId
 }) {
   if (!isOpen) return null;
 
@@ -1042,6 +1200,35 @@ function PaymentFlow({
               <p className="text-xs text-slate-500 mb-2">Demo: Click to simulate magic link</p>
               <button
                 onClick={() => {
+                  // Restore data from localStorage when simulating magic link
+                  const storedData = localStorage.getItem('sustentus_registration');
+                  const storedEncryptedVendorId = localStorage.getItem('sustentus_encrypted_vendor_id');
+                  
+                  if (storedData) {
+                    try {
+                      const parsedData = JSON.parse(storedData);
+                      setRegistrationData(parsedData);
+                      setUserEmail(parsedData.email);
+                      
+                      // Set plan if available
+                      if (parsedData.plan) {
+                        setSelectedPlan(parsedData.plan);
+                      }
+                      
+                      // Set encrypted vendor ID if available
+                      if (storedEncryptedVendorId) {
+                        setEncryptedVendorId(storedEncryptedVendorId);
+                      }
+                      
+                      console.log('🧪 Simulated magic link - restored data:');
+                      console.log('Email:', parsedData.email);
+                      console.log('Plan:', parsedData.plan);
+                      console.log('Registration Data:', parsedData);
+                    } catch (e) {
+                      console.error('Error parsing stored data:', e);
+                    }
+                  }
+                  
                   setIsAuthenticated(true);
                   setAuthStep('payment');
                 }}
@@ -1134,7 +1321,11 @@ function PaymentFlow({
 
                 {/* Payment Button */}
                 <button
-                  onClick={onPaymentSubmit}
+                  onClick={() => {
+                    console.log('🔄 Payment button clicked!');
+                    console.log('onPaymentSubmit function:', onPaymentSubmit);
+                    onPaymentSubmit();
+                  }}
                   disabled={paymentStatus === 'processing'}
                   className="w-full rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -1193,7 +1384,7 @@ function PaymentFlow({
               </svg>
             </div>
             <div>
-              <h4 className="text-lg font-semibold text-slate-900">Welcome to Sustentus!</h4>
+              <h4 className="text-lg font-semibold text-slate-900">Confirmation of Subscription</h4>
               <p className="text-sm text-slate-600">Your {selectedPlan} plan is now active</p>
             </div>
             <div className="text-xs text-slate-500 space-y-1">
@@ -1205,6 +1396,95 @@ function PaymentFlow({
             <div className="pt-2 text-xs text-slate-400">
               <p>Company: {registrationData.companyName}</p>
               <p>Contact: {registrationData.contactName}</p>
+              {encryptedVendorId ? (
+                <p className="text-xs text-slate-400 mt-1">
+                  <strong>Vendor ID:</strong> {encryptedVendorId.substring(0, 20)}...
+                </p>
+              ) : (
+                <p className="text-xs text-red-400 mt-1">
+                  <strong>⚠️ Vendor ID:</strong> Not set (check console for details)
+                </p>
+              )}
+            </div>
+            
+            {/* Continue Button */}
+            <button
+              onClick={() => {
+                console.log('🔄 Continue to Dashboard button clicked!');
+                console.log('Current authStep:', authStep);
+                console.log('Setting authStep to dashboard...');
+                setAuthStep('dashboard');
+                console.log('authStep should now be dashboard');
+              }}
+              className="w-full rounded-lg bg-green-600 px-4 py-2 font-semibold text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+            >
+              Continue to Dashboard
+            </button>
+          </div>
+        )}
+
+        {/* Dashboard State - Post Payment */}
+        {authStep === 'dashboard' && (
+          <div className="text-center space-y-4">
+            <div className="mx-auto w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center">
+              <svg className="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <h4 className="text-lg font-semibold text-slate-900">Account Setup Complete!</h4>
+              <p className="text-sm text-slate-600">You're all set to start using Sustentus</p>
+            </div>
+            <div className="text-xs text-slate-500 space-y-1">
+              <p>🎯 Next steps:</p>
+              <p>• Check your email for login credentials</p>
+              <p>• Access your dashboard at app.sustentus.com</p>
+              <p>• Set up your team and integrations</p>
+            </div>
+            <div className="pt-2 space-y-2">
+              {encryptedVendorId && (
+                <button
+                  onClick={() => {
+                    // Debug the encrypted Vendor ID
+                    console.log('🔍 Dashboard button clicked:');
+                    console.log('- encryptedVendorId:', encryptedVendorId);
+                    console.log('- Type:', typeof encryptedVendorId);
+                    console.log('- Length:', encryptedVendorId ? encryptedVendorId.length : 'undefined');
+                    
+                    if (!encryptedVendorId) {
+                      alert('Vendor ID not available. Please check console for details.');
+                      return;
+                    }
+                    
+                    // Open vendor dashboard in new tab using encrypted Vendor ID
+                    const dashboardUrl = `https://demo-vendor.sustentus.com/?vendor=${encryptedVendorId}`;
+                    console.log('🌐 Opening dashboard URL:', dashboardUrl);
+                    window.open(dashboardUrl, '_blank');
+                  }}
+                  className="w-full rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                >
+                  Access Vendor Dashboard
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  setAuthStep('registration');
+                  setShowPaymentFlow(false);
+                }}
+                className="w-full rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
+              >
+                Back to Pricing
+              </button>
+              <button
+                onClick={() => {
+                  setAuthStep('registration');
+                  setShowPaymentFlow(false);
+                  setIsAuthenticated(false);
+                }}
+                className="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              >
+                Start New Registration
+              </button>
             </div>
           </div>
         )}
