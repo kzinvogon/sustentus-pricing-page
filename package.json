@@ -10,9 +10,10 @@
     "deploy": "npm run build && gh-pages -d dist"
   },
   "dependencies": {
+    "@sendgrid/mail": "^8.1.1",
+    "nodemailer": "^7.0.5",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "@sendgrid/mail": "^8.1.1"
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",

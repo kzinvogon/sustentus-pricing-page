@@ -1,5 +1,5 @@
 import React, { Fragment, useMemo, useRef, useState, useEffect } from 'react'
-import { sendMagicLink, sendWelcomeEmail, sendPaymentConfirmation } from './services/sendgrid.js'
+import { sendMagicLink, sendWelcomeEmail, sendPaymentConfirmation } from './services/nodemailer.js'
 
 export default function App() {
   const [selectedPlan, setSelectedPlan] = useState('Standard'); // default focus
