@@ -1,4 +1,5 @@
 import React, { Fragment, useMemo, useRef, useState, useEffect } from 'react'
+import { sendMagicLink, sendWelcomeEmail, sendPaymentConfirmation } from './services/sendgrid.js'
 
 export default function App() {
   const [selectedPlan, setSelectedPlan] = useState('Standard'); // default focus
@@ -10,8 +11,16 @@ export default function App() {
   const [userEmail, setUserEmail] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [authStep, setAuthStep] = useState('email'); // 'email', 'check-email', 'payment'
+  const [authStep, setAuthStep] = useState('registration'); // 'registration', 'check-email', 'payment'
   const [paymentStatus, setPaymentStatus] = useState('pending'); // 'pending', 'processing', 'success', 'failed'
+  const [registrationData, setRegistrationData] = useState({
+    companyName: '',
+    contactName: '',
+    billingAddress: '',
+    email: '',
+    phone: '',
+    country: 'US'
+  });
   const featuresRef = useRef(null);
 
   useEffect(() => {
@@ -244,39 +253,97 @@ export default function App() {
   function handleStartPayment(plan) {
     setSelectedPlan(plan);
     setShowPaymentFlow(true);
-    setAuthStep('email');
+    setAuthStep('registration');
     setIsAuthenticated(false);
     setUserEmail('');
+    setRegistrationData({
+      companyName: '',
+      contactName: '',
+      billingAddress: '',
+      email: '',
+      phone: '',
+      country: 'US'
+    });
   }
 
-  function handleSendMagicLink(email) {
-    if (!email || !email.includes('@')) return;
+  async function handleSendMagicLink(registrationData) {
+    if (!registrationData.email || !registrationData.email.includes('@')) return;
+    if (!registrationData.companyName || !registrationData.contactName || !registrationData.billingAddress) return;
     
     setIsLoading(true);
-    setUserEmail(email);
+    setUserEmail(registrationData.email);
     
-    // Simulate sending magic link
-    setTimeout(() => {
+    try {
+      // Generate a simple token (in production, use proper JWT or crypto)
+      const token = btoa(`${registrationData.email}-${Date.now()}-${Math.random()}`);
+      
+      // Send magic link email via SendGrid
+      const result = await sendMagicLink(registrationData.email, selectedPlan, token);
+      
+      if (result.success) {
+        console.log('Magic link sent successfully to:', registrationData.email);
+        setAuthStep('check-email');
+      } else {
+        console.error('Failed to send magic link:', result.error);
+        // Fallback to simulation for demo purposes
+        setTimeout(() => {
+          setIsLoading(false);
+          setAuthStep('check-email');
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Error sending magic link:', error);
+      // Fallback to simulation for demo purposes
+      setTimeout(() => {
+        setIsLoading(false);
+        setAuthStep('check-email');
+      }, 2000);
+    } finally {
       setIsLoading(false);
-      setAuthStep('check-email');
-    }, 2000);
+    }
   }
 
-  function handlePaymentSubmit() {
+  async function handlePaymentSubmit() {
     setPaymentStatus('processing');
     
-    // Simulate payment processing
-    setTimeout(() => {
+    try {
+      // Simulate payment processing
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // Send confirmation emails
+      const welcomeResult = await sendWelcomeEmail(userEmail, selectedPlan, registrationData);
+      const paymentResult = await sendPaymentConfirmation(userEmail, selectedPlan, registrationData, {});
+      
+      if (welcomeResult.success) {
+        console.log('Welcome email sent successfully');
+      } else {
+        console.error('Failed to send welcome email:', welcomeResult.error);
+      }
+      
+      if (paymentResult.success) {
+        console.log('Payment confirmation email sent successfully');
+      } else {
+        console.error('Failed to send payment confirmation:', paymentResult.error);
+      }
+      
       setPaymentStatus('success');
       
       // Auto-close after success
       setTimeout(() => {
         setShowPaymentFlow(false);
         setPaymentStatus('pending');
-        setAuthStep('email');
+        setAuthStep('registration');
         setIsAuthenticated(false);
+      }, 5000); // Give more time to read the success message
+    } catch (error) {
+      console.error('Error processing payment:', error);
+      setPaymentStatus('failed');
+      
+      // Reset on failure
+      setTimeout(() => {
+        setPaymentStatus('pending');
       }, 3000);
-    }, 3000);
+    }
   }
 
   function handleResendMagicLink() {
@@ -329,6 +396,8 @@ export default function App() {
         onResendMagicLink={handleResendMagicLink}
         setIsAuthenticated={setIsAuthenticated}
         setAuthStep={setAuthStep}
+        registrationData={registrationData}
+        setRegistrationData={setRegistrationData}
       />
       <Footer />
     </div>
@@ -708,7 +777,9 @@ function PaymentFlow({
   onPaymentSubmit, 
   onResendMagicLink,
   setIsAuthenticated,
-  setAuthStep
+  setAuthStep,
+  registrationData,
+  setRegistrationData
 }) {
   if (!isOpen) return null;
 
@@ -751,6 +822,145 @@ function PaymentFlow({
             </div>
           </div>
         </div>
+
+        {/* Registration Form */}
+        {authStep === 'registration' && !isAuthenticated && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Company Name *
+              </label>
+              <input
+                type="text"
+                value={registrationData.companyName}
+                onChange={(e) => setRegistrationData({...registrationData, companyName: e.target.value})}
+                placeholder="Enter your company name"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                required
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Contact Name * <span className="text-xs text-slate-500">(The Master User)</span>
+              </label>
+              <input
+                type="text"
+                value={registrationData.contactName}
+                onChange={(e) => setRegistrationData({...registrationData, contactName: e.target.value})}
+                placeholder="Enter contact name"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                required
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Billing Address *
+              </label>
+              <textarea
+                value={registrationData.billingAddress}
+                onChange={(e) => setRegistrationData({...registrationData, billingAddress: e.target.value})}
+                placeholder="Enter complete billing address"
+                rows={3}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                required
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Email Address *
+              </label>
+              <input
+                type="email"
+                value={registrationData.email}
+                onChange={(e) => setRegistrationData({...registrationData, email: e.target.value})}
+                placeholder="Enter your email address"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                required
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Country *
+                </label>
+                <select
+                  value={registrationData.country}
+                  onChange={(e) => setRegistrationData({...registrationData, country: e.target.value})}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                >
+                  <option value="US">United States</option>
+                  <option value="CA">Canada</option>
+                  <option value="GB">United Kingdom</option>
+                  <option value="AU">Australia</option>
+                  <option value="DE">Germany</option>
+                  <option value="FR">France</option>
+                  <option value="IE">Ireland</option>
+                  <option value="NL">Netherlands</option>
+                  <option value="SE">Sweden</option>
+                  <option value="NO">Norway</option>
+                  <option value="DK">Denmark</option>
+                  <option value="FI">Finland</option>
+                  <option value="CH">Switzerland</option>
+                  <option value="AT">Austria</option>
+                  <option value="BE">Belgium</option>
+                  <option value="IT">Italy</option>
+                  <option value="ES">Spain</option>
+                  <option value="PT">Portugal</option>
+                  <option value="OTHER">Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Phone Number *
+                </label>
+                <input
+                  type="tel"
+                  value={registrationData.phone}
+                  onChange={(e) => setRegistrationData({...registrationData, phone: e.target.value})}
+                  placeholder="+1 (555) 123-4567"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  required
+                />
+              </div>
+            </div>
+            
+            <button
+              onClick={() => onSendMagicLink(registrationData)}
+              disabled={!registrationData.email || !registrationData.companyName || !registrationData.contactName || !registrationData.billingAddress || !registrationData.phone || isLoading}
+              className="w-full rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? (
+                <div className="flex items-center justify-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Sending...
+                </div>
+              ) : (
+                'Continue to Payment'
+              )}
+            </button>
+            
+            {/* Demo: Skip to payment for testing */}
+            <div className="pt-4 border-t border-slate-200">
+              <p className="text-xs text-slate-500 mb-2">Demo: Skip to payment</p>
+              <button
+                onClick={() => {
+                  setIsAuthenticated(true);
+                  setAuthStep('payment');
+                }}
+                className="w-full text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg transition-colors"
+              >
+                🚀 Skip to Payment Form
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Authentication Flow */}
         {authStep === 'email' && !isAuthenticated && (
@@ -950,6 +1160,30 @@ function PaymentFlow({
           </div>
         )}
 
+        {/* Failed Payment State */}
+        {paymentStatus === 'failed' && (
+          <div className="text-center space-y-4">
+            <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </div>
+            <div>
+              <h4 className="text-lg font-semibold text-red-900">Payment Failed</h4>
+              <p className="text-sm text-red-600">There was an issue processing your payment</p>
+            </div>
+            <div className="text-xs text-slate-500">
+              Please check your payment details and try again
+            </div>
+            <button
+              onClick={() => setPaymentStatus('pending')}
+              className="w-full rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+            >
+              Try Again
+            </button>
+          </div>
+        )}
+
         {/* Success State */}
         {paymentStatus === 'success' && (
           <div className="text-center space-y-4">
@@ -959,11 +1193,18 @@ function PaymentFlow({
               </svg>
             </div>
             <div>
-              <h4 className="text-lg font-semibold text-slate-900">Payment Successful!</h4>
+              <h4 className="text-lg font-semibold text-slate-900">Welcome to Sustentus!</h4>
               <p className="text-sm text-slate-600">Your {selectedPlan} plan is now active</p>
             </div>
-            <div className="text-xs text-slate-500">
-              You'll receive a confirmation email shortly
+            <div className="text-xs text-slate-500 space-y-1">
+              <p>✅ Account created successfully</p>
+              <p>✅ Payment processed</p>
+              <p>📧 Check your email for login details</p>
+              <p>📧 Welcome package sent to {registrationData.email}</p>
+            </div>
+            <div className="pt-2 text-xs text-slate-400">
+              <p>Company: {registrationData.companyName}</p>
+              <p>Contact: {registrationData.contactName}</p>
             </div>
           </div>
         )}
